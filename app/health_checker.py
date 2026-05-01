@@ -122,6 +122,7 @@ def check_ssl_certificate(url: str) -> Dict[str, Optional[bool | int]]:
 
         # Create SSL context
         context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
 
         with socket.create_connection((hostname, port), timeout=10) as sock:
             with context.wrap_socket(sock, server_hostname=hostname) as secure_sock:
