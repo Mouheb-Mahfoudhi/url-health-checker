@@ -5,10 +5,9 @@ import os
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, validator, HttpUrl
+from pydantic import BaseModel
 
 from app.health_checker import perform_health_check, HealthCheckError
 

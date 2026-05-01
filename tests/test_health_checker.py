@@ -98,7 +98,6 @@ class TestCheckHttpStatus:
     @patch('app.health_checker.httpx.Client')
     def test_check_http_status_connection_error(self, mock_client):
         """Test HTTP status check with connection error."""
-        import httpx
         mock_client.return_value.__enter__.return_value.get.side_effect = Exception("Connection error")
 
         with pytest.raises(HealthCheckError, match="HTTP request failed"):

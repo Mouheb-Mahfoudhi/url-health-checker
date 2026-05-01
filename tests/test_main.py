@@ -1,12 +1,7 @@
 """
 Unit tests for FastAPI application endpoints.
 """
-import pytest
-from unittest.mock import patch, MagicMock
-
-from fastapi import HTTPException
-
-from app.main import app
+from unittest.mock import patch
 
 
 class TestRootEndpoint:

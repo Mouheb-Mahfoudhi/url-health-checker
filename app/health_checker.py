@@ -85,7 +85,7 @@ def check_response_time(url: str, timeout: int = 10) -> float:
     try:
         with httpx.Client(timeout=timeout, follow_redirects=True) as client:
             start_time = time.time()
-            response = client.get(url)
+            client.get(url)
             end_time = time.time()
             return round((end_time - start_time) * 1000, 2)
     except Exception as e:
@@ -143,7 +143,7 @@ def check_ssl_certificate(url: str) -> Dict[str, Optional[bool | int]]:
             'expires_in_days': days_until_expiry
         }
 
-    except Exception as e:
+    except Exception:
         # If SSL check fails, certificate is likely invalid
         return {
             'valid': False,
