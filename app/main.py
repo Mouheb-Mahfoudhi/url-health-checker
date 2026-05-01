@@ -47,7 +47,7 @@ async def root(request: Request):
     """
     Serve the web UI.
     """
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {"request": request})
 
 
 @app.get("/api", tags=["Root"])
