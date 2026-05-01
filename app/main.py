@@ -139,9 +139,10 @@ async def ping():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv('PORT', '8000'))
+    host = os.getenv('HOST', '127.0.0.1')
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host=host,
         port=port,
         reload=os.getenv('DEBUG', 'False').lower() == 'true'
     )
