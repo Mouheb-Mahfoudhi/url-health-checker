@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Health Checker</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Website Health Checker</h1>
+        <p class="subtitle">Check the health, SSL certificate, and response time of any website</p>
+
+        <form id="healthCheckForm">
+            <div class="form-group">
+                <label for="url">Enter Website URL</label>
+                <input
+                    type="url"
+                    id="url"
+                    name="url"
+                    placeholder="https://example.com"
+                    required
+                    pattern="https?://.+"
+                >
+            </div>
+            <button type="submit" class="check-button" id="checkButton">
+                Check Website Health
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Checking website health...</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="results" id="results">
+            <div class="result-card" id="resultCard">
+                <div class="result-url" id="resultUrl"></div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <span class="result-label">Status Code</span>
+                        <span class="result-value" id="statusCode"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Response Time</span>
+                        <span class="result-value" id="responseTime"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">SSL Valid</span>
+                        <span class="result-value" id="sslValid"></span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">SSL Expires In</span>
+                        <span class="result-value" id="sslExpires"></span>
+                    </div>
+                </div>
+                <div class="timestamp" id="timestamp"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+</body>
+</html>
