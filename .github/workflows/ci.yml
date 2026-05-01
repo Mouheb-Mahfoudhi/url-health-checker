@@ -58,7 +58,6 @@ jobs:
 
       - name: Bandit (SAST)
         run: bandit -r app -x tests -ll
-        : "HIGH"
 
       - name: pip-audit (dependencies)
         run: pip-audit -r requirements.txt
