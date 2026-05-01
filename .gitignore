@@ -75,5 +75,3 @@ semgrep-report.*
 
 # Local task or run artifacts
 .cache/
-
-Dockerfile
