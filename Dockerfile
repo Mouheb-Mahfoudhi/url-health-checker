@@ -1,5 +1,5 @@
 # Use Python 3.11 slim image as base
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # Set working directory
 WORKDIR /app
@@ -17,6 +17,9 @@ RUN apt-get update && \
 
 # Copy requirements file
 COPY requirements.txt .
+
+# Upgrade build tooling to patched versions
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
