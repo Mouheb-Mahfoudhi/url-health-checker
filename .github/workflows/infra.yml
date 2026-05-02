@@ -45,6 +45,7 @@ jobs:
             -target=aws_kms_key.app \
             -target=aws_kms_alias.app \
             -target=aws_vpc.main \
+            -target=aws_default_security_group.default \
             -target=aws_internet_gateway.igw \
             -target=aws_route_table.public \
             -target=aws_subnet.public \
@@ -58,6 +59,10 @@ jobs:
             -target=aws_security_group.ecs \
             -target=aws_ecr_repository.app \
             -target=aws_cloudwatch_log_group.app \
+            -target=aws_cloudwatch_log_group.vpc_flow \
+            -target=aws_iam_role.vpc_flow_logs \
+            -target=aws_iam_role_policy.vpc_flow_logs \
+            -target=aws_flow_log.vpc_flow \
             -target=aws_iam_role.task_execution \
             -target=aws_iam_role_policy_attachment.task_execution \
             -target=aws_iam_role.task \
