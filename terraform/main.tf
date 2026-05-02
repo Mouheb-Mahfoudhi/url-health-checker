@@ -337,10 +337,16 @@ resource "aws_iam_role_policy" "vpc_flow_logs" {
         Action = [
           "logs:CreateLogStream",
           "logs:PutLogEvents",
-          "logs:DescribeLogGroups",
           "logs:DescribeLogStreams"
         ]
-        Resource = "*"
+        Resource = "${aws_cloudwatch_log_group.vpc_flow.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups"
+        ]
+        Resource = aws_cloudwatch_log_group.vpc_flow.arn
       }
     ]
   })
