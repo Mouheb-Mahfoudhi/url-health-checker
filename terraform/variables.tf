@@ -76,9 +76,4 @@ variable "image_tag" {
   default     = "latest"
 }
 
-variable "log_retention_days" {
-  type        = number
-  description = "CloudWatch log retention in days"
-  default     = 365
-}
 

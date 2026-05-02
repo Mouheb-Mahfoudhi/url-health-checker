@@ -20,73 +20,12 @@ provider "aws" {
   region = var.aws_region
 }
 
-data "aws_caller_identity" "current" {}
-
-data "aws_region" "current" {}
-
 locals {
   name_prefix = replace(var.project_name, "_", "-")
   tags = {
     Project     = var.project_name
     Environment = var.environment
   }
-}
-
-resource "aws_kms_key" "app" {
-  description         = "KMS key for ECR and CloudWatch logs"
-  enable_key_rotation = true
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "EnableRootPermissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowCloudWatchLogs"
-        Effect = "Allow"
-        Principal = {
-          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowECR"
-        Effect = "Allow"
-        Principal = {
-          Service = "ecr.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-
-  tags = local.tags
-}
-
-resource "aws_kms_alias" "app" {
-  name          = "alias/${local.name_prefix}-key"
-  target_key_id = aws_kms_key.app.key_id
 }
 
 resource "aws_vpc" "main" {
@@ -99,16 +38,6 @@ resource "aws_vpc" "main" {
   })
 }
 
-resource "aws_default_security_group" "default" {
-  vpc_id = aws_vpc.main.id
-
-  ingress = []
-  egress  = []
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-default-sg"
-  })
-}
 
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
@@ -136,7 +65,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = false
+  map_public_ip_on_launch = true
 
   tags = merge(local.tags, {
     Name = "${local.name_prefix}-public-${count.index + 1}"
@@ -213,11 +142,11 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description     = "Forward traffic to ECS tasks"
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    cidr_blocks     = [var.vpc_cidr]
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = merge(local.tags, {
@@ -239,34 +168,10 @@ resource "aws_security_group" "ecs" {
   }
 
   egress {
-    description = "Allow HTTP outbound"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow HTTPS outbound"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow DNS (UDP)"
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow DNS (TCP)"
-    from_port   = 53
-    to_port     = 53
-    protocol    = "tcp"
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -277,90 +182,15 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_ecr_repository" "app" {
   name                 = var.project_name
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
   }
 
-  encryption_configuration {
-    encryption_type = "KMS"
-    kms_key         = aws_kms_key.app.arn
-  }
-
   tags = local.tags
 }
 
-resource "aws_cloudwatch_log_group" "app" {
-  name              = "/ecs/${var.project_name}"
-  retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.app.arn
-
-  tags = local.tags
-}
-
-resource "aws_cloudwatch_log_group" "vpc_flow" {
-  name              = "/vpc/${var.project_name}/flow-logs"
-  retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.app.arn
-
-  tags = local.tags
-}
-
-resource "aws_iam_role" "vpc_flow_logs" {
-  name = "${local.name_prefix}-vpc-flow-logs"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "vpc-flow-logs.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = local.tags
-}
-
-resource "aws_iam_role_policy" "vpc_flow_logs" {
-  role = aws_iam_role.vpc_flow_logs.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
-        ]
-        Resource = "${aws_cloudwatch_log_group.vpc_flow.arn}:*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:DescribeLogGroups"
-        ]
-        Resource = aws_cloudwatch_log_group.vpc_flow.arn
-      }
-    ]
-  })
-}
-
-resource "aws_flow_log" "vpc_flow" {
-  vpc_id               = aws_vpc.main.id
-  traffic_type         = "ALL"
-  log_destination_type = "cloud-watch-logs"
-  log_destination      = aws_cloudwatch_log_group.vpc_flow.arn
-  iam_role_arn         = aws_iam_role.vpc_flow_logs.arn
-
-  tags = local.tags
-}
 
 resource "aws_iam_role" "task_execution" {
   name = "${local.name_prefix}-task-exec"
@@ -381,9 +211,30 @@ resource "aws_iam_role" "task_execution" {
   tags = local.tags
 }
 
-resource "aws_iam_role_policy_attachment" "task_execution" {
-  role       = aws_iam_role.task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+resource "aws_iam_role_policy" "task_execution" {
+  role = aws_iam_role.task_execution.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role" "task" {
@@ -408,11 +259,6 @@ resource "aws_iam_role" "task" {
 resource "aws_ecs_cluster" "main" {
   name = "${local.name_prefix}-cluster"
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-
   tags = local.tags
 }
 
@@ -422,8 +268,6 @@ resource "aws_lb" "app" {
   internal           = false
   subnets            = aws_subnet.public[*].id
   security_groups    = [aws_security_group.alb.id]
-  enable_deletion_protection = true
-  drop_invalid_header_fields = true
 
   tags = local.tags
 }
@@ -488,14 +332,6 @@ resource "aws_ecs_task_definition" "app" {
           value = tostring(var.health_check_timeout)
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.app.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
-        }
-      }
     }
   ])
 
