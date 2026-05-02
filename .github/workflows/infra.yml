@@ -1,0 +1,59 @@
+name: Infra
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  apply:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-1
+      TF_DIR: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform validate
+
+      - name: Terraform apply (infra)
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform apply -auto-approve \
+            -target=aws_vpc.main \
+            -target=aws_internet_gateway.igw \
+            -target=aws_route_table.public \
+            -target=aws_subnet.public \
+            -target=aws_route_table_association.public \
+            -target=aws_security_group.alb \
+            -target=aws_security_group.ecs \
+            -target=aws_ecr_repository.app \
+            -target=aws_cloudwatch_log_group.app \
+            -target=aws_iam_role.task_execution \
+            -target=aws_iam_role_policy_attachment.task_execution \
+            -target=aws_iam_role.task \
+            -target=aws_ecs_cluster.main \
+            -target=aws_lb.app \
+            -target=aws_lb_target_group.app \
+            -target=aws_lb_listener.http

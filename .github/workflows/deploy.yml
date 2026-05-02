@@ -1,8 +1,8 @@
-name: CD
+name: Deploy
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [Infra]
     types: [completed]
 
 permissions:
@@ -16,10 +16,12 @@ jobs:
     env:
       AWS_REGION: eu-west-1
       TF_DIR: terraform
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -38,10 +40,6 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: terraform validate
 
-      - name: Terraform apply (bootstrap)
-        working-directory: ${{ env.TF_DIR }}
-        run: terraform apply -auto-approve -var="image_tag=bootstrap"
-
       - name: Resolve ECR repo URL
         id: ecr
         working-directory: ${{ env.TF_DIR }}
@@ -57,4 +55,8 @@ jobs:
 
       - name: Terraform apply (deploy)
         working-directory: ${{ env.TF_DIR }}
-        run: terraform apply -auto-approve -var="image_tag=${IMAGE_TAG}"
+        run: |
+          terraform apply -auto-approve \
+            -var="image_tag=${IMAGE_TAG}" \
+            -target=aws_ecs_task_definition.app \
+            -target=aws_ecs_service.app
