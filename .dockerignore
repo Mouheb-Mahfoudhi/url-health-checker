@@ -47,5 +47,3 @@ README.md
 .env
 .env.local
 
-# ECS
-ecs-task-definition.json
