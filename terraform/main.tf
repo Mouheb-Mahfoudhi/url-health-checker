@@ -217,7 +217,7 @@ resource "aws_security_group" "alb" {
     from_port       = var.container_port
     to_port         = var.container_port
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs.id]
+    cidr_blocks     = [var.vpc_cidr]
   }
 
   tags = merge(local.tags, {
