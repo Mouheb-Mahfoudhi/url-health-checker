@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: [Infra]
     types: [completed]
-  workflow_dispatch:
 
 permissions:
   contents: read
