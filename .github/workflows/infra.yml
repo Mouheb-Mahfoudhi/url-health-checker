@@ -47,6 +47,11 @@ jobs:
             -target=aws_route_table.public \
             -target=aws_subnet.public \
             -target=aws_route_table_association.public \
+            -target=aws_subnet.private \
+            -target=aws_eip.nat \
+            -target=aws_nat_gateway.nat \
+            -target=aws_route_table.private \
+            -target=aws_route_table_association.private \
             -target=aws_security_group.alb \
             -target=aws_security_group.ecs \
             -target=aws_ecr_repository.app \

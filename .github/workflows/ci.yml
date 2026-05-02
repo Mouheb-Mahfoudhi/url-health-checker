@@ -90,10 +90,9 @@ jobs:
       - name: Checkov (IaC)
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: .
+          directory: terraform
           framework: terraform
           quiet: true
-          soft_fail: true
 
   codeql:
     runs-on: ubuntu-latest
