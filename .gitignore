@@ -51,8 +51,6 @@ htmlcov/
 README.md
 TESTING.md
 docker-compose.yml
-ecs-task-definition.json
-
 # Terraform
 .terraform/
 *.tfstate
