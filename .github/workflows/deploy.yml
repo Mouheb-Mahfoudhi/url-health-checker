@@ -59,5 +59,4 @@ jobs:
         run: |
           terraform apply -auto-approve \
             -var="image_tag=${IMAGE_TAG}" \
-            -target=aws_ecs_task_definition.app \
-            -target=aws_ecs_service.app
+            -target=module.ecs

@@ -27,337 +27,54 @@ locals {
     Environment = var.environment
   }
 }
-
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-vpc"
-  })
+module "network" {
+  source               = "./modules/network"
+  name_prefix          = local.name_prefix
+  tags                 = local.tags
+  vpc_cidr             = var.vpc_cidr
+  public_subnet_cidrs  = var.public_subnet_cidrs
+  private_subnet_cidrs = var.private_subnet_cidrs
+  availability_zones   = var.availability_zones
 }
 
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-igw"
-  })
+module "security" {
+  source         = "./modules/security"
+  name_prefix    = local.name_prefix
+  tags           = local.tags
+  vpc_id         = module.network.vpc_id
+  container_port = var.container_port
 }
 
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-rt"
-  })
+module "ecr" {
+  source = "./modules/ecr"
+  name   = var.project_name
+  tags   = local.tags
 }
 
-resource "aws_subnet" "public" {
-  count                   = length(var.public_subnet_cidrs)
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = true
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-${count.index + 1}"
-  })
+module "alb" {
+  source            = "./modules/alb"
+  name_prefix       = local.name_prefix
+  tags              = local.tags
+  vpc_id            = module.network.vpc_id
+  public_subnet_ids = module.network.public_subnet_ids
+  alb_sg_id         = module.security.alb_sg_id
+  container_port    = var.container_port
 }
 
-resource "aws_route_table_association" "public" {
-  count          = length(aws_subnet.public)
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_subnet" "private" {
-  count                   = length(var.private_subnet_cidrs)
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.private_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = false
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-${count.index + 1}"
-  })
-}
-
-resource "aws_eip" "nat" {
-  domain = "vpc"
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-nat-eip"
-  })
-}
-
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public[0].id
-
-  depends_on = [aws_internet_gateway.igw]
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-nat"
-  })
-}
-
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
-  }
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-rt"
-  })
-}
-
-resource "aws_route_table_association" "private" {
-  count          = length(aws_subnet.private)
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private.id
-}
-
-resource "aws_security_group" "alb" {
-  name        = "${local.name_prefix}-alb-sg"
-  description = "ALB security group"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "HTTP from internet"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-alb-sg"
-  })
-}
-
-resource "aws_security_group" "ecs" {
-  name        = "${local.name_prefix}-ecs-sg"
-  description = "ECS service security group"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "Allow traffic from ALB"
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-ecs-sg"
-  })
-}
-
-resource "aws_ecr_repository" "app" {
-  name                 = var.project_name
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = local.tags
-}
-
-
-resource "aws_iam_role" "task_execution" {
-  name = "${local.name_prefix}-task-exec"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = local.tags
-}
-
-resource "aws_iam_role_policy" "task_execution" {
-  role = aws_iam_role.task_execution.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role" "task" {
-  name = "${local.name_prefix}-task"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = local.tags
-}
-
-resource "aws_ecs_cluster" "main" {
-  name = "${local.name_prefix}-cluster"
-
-  tags = local.tags
-}
-
-resource "aws_lb" "app" {
-  name               = "${local.name_prefix}-alb"
-  load_balancer_type = "application"
-  internal           = false
-  subnets            = aws_subnet.public[*].id
-  security_groups    = [aws_security_group.alb.id]
-
-  tags = local.tags
-}
-
-resource "aws_lb_target_group" "app" {
-  name        = "${local.name_prefix}-tg"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    path                = "/ping"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-  }
-
-  tags = local.tags
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.app.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
-  }
-}
-
-resource "aws_ecs_task_definition" "app" {
-  family                   = var.project_name
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.task_cpu
-  memory                   = var.task_memory
-  execution_role_arn       = aws_iam_role.task_execution.arn
-  task_role_arn            = aws_iam_role.task.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = var.project_name
-      image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
-      essential = true
-      portMappings = [
-        {
-          containerPort = var.container_port
-          protocol      = "tcp"
-        }
-      ]
-      environment = [
-        {
-          name  = "PORT"
-          value = tostring(var.container_port)
-        },
-        {
-          name  = "HEALTH_CHECK_TIMEOUT"
-          value = tostring(var.health_check_timeout)
-        }
-      ]
-    }
-  ])
-
-  tags = local.tags
-}
-
-resource "aws_ecs_service" "app" {
-  name            = "${local.name_prefix}-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.app.arn
-    container_name   = var.project_name
-    container_port   = var.container_port
-  }
-
-  depends_on = [aws_lb_listener.http]
-
-  tags = local.tags
+module "ecs" {
+  source              = "./modules/ecs"
+  name_prefix         = local.name_prefix
+  project_name        = var.project_name
+  tags                = local.tags
+  task_cpu            = var.task_cpu
+  task_memory         = var.task_memory
+  desired_count       = var.desired_count
+  container_port      = var.container_port
+  image_tag           = var.image_tag
+  health_check_timeout = var.health_check_timeout
+  private_subnet_ids  = module.network.private_subnet_ids
+  ecs_sg_id           = module.security.ecs_sg_id
+  target_group_arn    = module.alb.target_group_arn
+  ecr_repository_url  = module.ecr.repository_url
+  ecr_repository_arn  = module.ecr.repository_arn
 }
