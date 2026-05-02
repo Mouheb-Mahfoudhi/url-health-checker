@@ -20,12 +20,73 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
 locals {
   name_prefix = replace(var.project_name, "_", "-")
   tags = {
     Project     = var.project_name
     Environment = var.environment
   }
+}
+
+resource "aws_kms_key" "app" {
+  description         = "KMS key for ECR and CloudWatch logs"
+  enable_key_rotation = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableRootPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${data.aws_region.current.name}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowECR"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecr.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+resource "aws_kms_alias" "app" {
+  name          = "alias/${local.name_prefix}-key"
+  target_key_id = aws_kms_key.app.key_id
 }
 
 resource "aws_vpc" "main" {
@@ -133,6 +194,7 @@ resource "aws_security_group" "alb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "HTTP from internet"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -140,10 +202,11 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "Forward traffic to ECS tasks"
+    from_port       = var.container_port
+    to_port         = var.container_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs.id]
   }
 
   tags = merge(local.tags, {
@@ -157,6 +220,7 @@ resource "aws_security_group" "ecs" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description     = "Allow traffic from ALB"
     from_port       = var.container_port
     to_port         = var.container_port
     protocol        = "tcp"
@@ -164,9 +228,34 @@ resource "aws_security_group" "ecs" {
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Allow HTTP outbound"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow HTTPS outbound"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow DNS (UDP)"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow DNS (TCP)"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -177,10 +266,15 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_ecr_repository" "app" {
   name                 = var.project_name
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.app.arn
   }
 
   tags = local.tags
@@ -189,6 +283,7 @@ resource "aws_ecr_repository" "app" {
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.app.arn
 
   tags = local.tags
 }
@@ -239,6 +334,11 @@ resource "aws_iam_role" "task" {
 resource "aws_ecs_cluster" "main" {
   name = "${local.name_prefix}-cluster"
 
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
   tags = local.tags
 }
 
@@ -248,6 +348,8 @@ resource "aws_lb" "app" {
   internal           = false
   subnets            = aws_subnet.public[*].id
   security_groups    = [aws_security_group.alb.id]
+  enable_deletion_protection = true
+  drop_invalid_header_fields = true
 
   tags = local.tags
 }

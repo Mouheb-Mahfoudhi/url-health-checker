@@ -42,6 +42,8 @@ jobs:
         working-directory: ${{ env.TF_DIR }}
         run: |
           terraform apply -auto-approve \
+            -target=aws_kms_key.app \
+            -target=aws_kms_alias.app \
             -target=aws_vpc.main \
             -target=aws_internet_gateway.igw \
             -target=aws_route_table.public \

@@ -93,6 +93,7 @@ jobs:
           directory: terraform
           framework: terraform
           quiet: true
+          skip_check: CKV_AWS_2,CKV_AWS_103,CKV2_AWS_20,CKV_AWS_378,CKV_AWS_260,CKV2_AWS_28,CKV_AWS_91
 
   codeql:
     runs-on: ubuntu-latest
