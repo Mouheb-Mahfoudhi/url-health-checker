@@ -327,4 +327,6 @@ All CI jobs pass → PR approved → merged to main
                                             └── Old tasks drained and stopped ✓
 ```
 ## 10. Demo
-[url-health-checker-demo](http://url-health-checker-alb-1132431860.eu-west-1.elb.amazonaws.com/)
+Note : The application is also served over HTTPS via a manually configured SSL/TLS pipeline. A public certificate was provisioned through AWS Certificate Manager (ACM) using DNS validation, with the validation CNAME record added to Cloudflare DNS. The domain urlhealthchecker.tech is managed through Cloudflare, which handles DNS resolution via CNAME flattening on the apex domain. The ACM certificate (covering urlhealthchecker.tech and *.urlhealthchecker.tech) is attached to the ALB's HTTPS listener on port 443, and the HTTP listener on port 80 is configured to permanently redirect all traffic to HTTPS.
+<br>
+[url-health-checker-demo](https://urlhealthchecker.tech)
