@@ -152,7 +152,7 @@ def check_ssl_certificate(url: str) -> Dict[str, Optional[bool | int]]:
         }
 
 
-def perform_health_check(url: str, timeout: int = 10) -> Dict:
+def perform_health_check(url: str, timeout: int = 30) -> Dict:
     """
     Perform comprehensive health check on a URL.
 
