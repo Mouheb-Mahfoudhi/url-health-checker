@@ -76,4 +76,8 @@ variable "image_tag" {
   default     = "latest"
 }
 
-
+variable "monitoring_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Prometheus/YACE/Grafana box"
+  default     = "t3.small"
+}

@@ -49,3 +49,22 @@ resource "aws_security_group" "ecs" {
     Name = "${var.name_prefix}-ecs-sg"
   })
 }
+
+
+resource "aws_security_group" "monitoring" {
+  name        = "${var.name_prefix}-monitoring-sg"
+  description = "Monitoring EC2 (Prometheus + YACE + Grafana) - SSM only, no inbound"
+  vpc_id      = var.vpc_id
+
+  egress {
+    description = "Allow all outbound (CloudWatch API, SSM, docker pulls)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-monitoring-sg"
+  })
+}
