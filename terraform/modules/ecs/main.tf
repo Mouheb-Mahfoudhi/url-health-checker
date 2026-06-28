@@ -106,16 +106,14 @@ resource "aws_ecs_task_definition" "app" {
           value = tostring(var.health_check_timeout)
         }
       ]
-      logConfiguration = [
-        {
+      logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-region"        = data.aws_region.current.region
           "awslogs-stream-prefix" = "ecs"
         }
-       }
-      ]
+      }
     }
   ])
 
