@@ -17,3 +17,11 @@ output "alb_arn" {
   description = "ALB ARN"
   value       = aws_lb.app.arn
 }
+
+output "grafana_target_group_arn" {
+  value = aws_lb_target_group.grafana.arn
+}
+
+output "prometheus_target_group_arn" {
+  value = aws_lb_target_group.prometheus.arn
+}

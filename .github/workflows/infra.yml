@@ -44,4 +44,5 @@ jobs:
             -target=module.network \
             -target=module.security \
             -target=module.ecr \
-            -target=module.alb
+            -target=module.alb \
+            -target=module.monitoring
