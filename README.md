@@ -104,7 +104,7 @@ The pipeline is composed of **three independent, chained workflows**. This separ
 
 ```
 ┌───────────┐     on: push/PR      ┌─────────────────────────────────────┐
-│           │ ──────────────────▶  │  CI (ci.yml)                        │
+│           │ ──────────────────▶ │  CI (ci.yml)                        │
 │ Developer │                      │  lint · tests · bandit · pip-audit  │
 │           │                      └──────────────────┬──────────────────┘
 └───────────┘                                         │ on: workflow_run (completed)

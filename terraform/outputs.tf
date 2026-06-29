@@ -17,21 +17,3 @@ output "ecs_service_name" {
   description = "ECS service name"
   value       = module.ecs.ecs_service_name
 }
-
-output "monitoring_instance_id" {
-  description = "SSM target - aws ssm start-session --target <this>"
-  value       = module.monitoring.monitoring_instance_id
-}
-
-output "ecs_log_group_name" {
-  description = "Paste this into Grafana's CloudWatch Logs Explore"
-  value       = module.ecs.log_group_name
-}
-
-output "grafana_url" {
-  value = "http://${module.alb.alb_dns_name}:3000"
-}
-
-output "prometheus_url" {
-  value = "http://${module.alb.alb_dns_name}:9090"
-}

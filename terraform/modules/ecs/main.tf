@@ -38,14 +38,6 @@ resource "aws_iam_role_policy" "task_execution" {
           "ecr:BatchGetImage"
         ]
         Resource = var.ecr_repository_arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "${aws_cloudwatch_log_group.app.arn}:*"
       }
     ]
   })
@@ -106,14 +98,6 @@ resource "aws_ecs_task_definition" "app" {
           value = tostring(var.health_check_timeout)
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = data.aws_region.current.region
-          "awslogs-stream-prefix" = "ecs"
-        }
-      }
     }
   ])
 
@@ -140,12 +124,4 @@ resource "aws_ecs_service" "app" {
   }
 
   tags = var.tags
-}
-
-data "aws_region" "current" {}
-
-resource "aws_cloudwatch_log_group" "app" {
-  name              = "/ecs/${var.project_name}"
-  retention_in_days = 14
-  tags              = var.tags
 }
