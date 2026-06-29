@@ -27,3 +27,11 @@ output "ecs_log_group_name" {
   description = "Paste this into Grafana's CloudWatch Logs Explore"
   value       = module.ecs.log_group_name
 }
+
+output "grafana_url" {
+  value = "http://${module.alb.alb_dns_name}:3000"
+}
+
+output "prometheus_url" {
+  value = "http://${module.alb.alb_dns_name}:9090"
+}

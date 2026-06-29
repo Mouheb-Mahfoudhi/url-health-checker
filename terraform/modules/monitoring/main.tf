@@ -86,3 +86,15 @@ resource "aws_instance" "monitoring" {
     Name = "${var.name_prefix}-monitoring"
   })
 }
+
+resource "aws_lb_target_group_attachment" "grafana" {
+  target_group_arn = var.grafana_target_group_arn
+  target_id         = aws_instance.monitoring.id
+  port              = 3000
+}
+
+resource "aws_lb_target_group_attachment" "prometheus" {
+  target_group_arn = var.prometheus_target_group_arn
+  target_id         = aws_instance.monitoring.id
+  port              = 9090
+}

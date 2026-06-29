@@ -39,3 +39,13 @@ variable "discovery_tag_value" {
   type        = string
   description = "Tag value YACE filters on - should match local.tags.Project in root main.tf"
 }
+
+variable "grafana_target_group_arn" {
+  type        = string
+  description = "ALB target group ARN for Grafana"
+}
+
+variable "prometheus_target_group_arn" {
+  type        = string
+  description = "ALB target group ARN for Prometheus"
+}

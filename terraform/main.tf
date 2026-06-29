@@ -85,6 +85,8 @@ module "monitoring" {
   tags                 = local.tags
   private_subnet_id    = module.network.private_subnet_ids[0]
   monitoring_sg_id     = module.security.monitoring_sg_id
+  grafana_target_group_arn     = module.alb.grafana_target_group_arn
+  prometheus_target_group_arn  = module.alb.prometheus_target_group_arn
   instance_type        = var.monitoring_instance_type
   aws_region           = var.aws_region
   discovery_tag_key    = "Project"
