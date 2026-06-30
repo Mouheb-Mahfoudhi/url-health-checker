@@ -8,9 +8,19 @@ variable "tags" {
   description = "Common tags"
 }
 
-variable "private_subnet_id" {
+variable "aws_region" {
   type        = string
-  description = "Private subnet ID to launch the monitoring instance in (reuses an existing ECS private subnet - no new networking required, NAT gateway already gives it egress)"
+  description = "AWS region"
+}
+
+variable "instance_type" {
+  type        = string
+  description = "EC2 instance type"
+}
+
+variable "public_subnet_id" {
+  type        = string
+  description = "Public subnet ID for the monitoring instance"
 }
 
 variable "monitoring_sg_id" {
@@ -18,26 +28,19 @@ variable "monitoring_sg_id" {
   description = "Security group ID for the monitoring instance"
 }
 
-variable "instance_type" {
+variable "key_name" {
   type        = string
-  description = "EC2 instance type for the monitoring box (Prometheus + YACE + Grafana all run here)"
-  default     = "t3.small"
-}
-
-variable "aws_region" {
-  type        = string
-  description = "AWS region - passed into the YACE config and Grafana's CloudWatch datasource"
+  description = "Existing EC2 key pair name for SSH access"
 }
 
 variable "discovery_tag_key" {
   type        = string
-  description = "Tag key YACE uses to discover the ECS service / ALB / target group"
-  default     = "Project"
+  description = "Tag key YACE uses to discover resources"
 }
 
 variable "discovery_tag_value" {
   type        = string
-  description = "Tag value YACE filters on - should match local.tags.Project in root main.tf"
+  description = "Tag value YACE uses to discover resources"
 }
 
 variable "grafana_target_group_arn" {

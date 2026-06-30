@@ -19,9 +19,11 @@ output "alb_arn" {
 }
 
 output "grafana_target_group_arn" {
-  value = aws_lb_target_group.grafana.arn
+  description = "Grafana target group ARN"
+  value       = aws_lb_target_group.grafana.arn
 }
 
 output "prometheus_target_group_arn" {
-  value = aws_lb_target_group.prometheus.arn
+  description = "Prometheus target group ARN"
+  value       = aws_lb_target_group.prometheus.arn
 }

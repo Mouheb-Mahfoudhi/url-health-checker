@@ -46,7 +46,26 @@ resource "aws_lb_target_group" "grafana" {
   target_type = "instance"
 
   health_check {
-    path                = "/api/health"
+    path                = "/login"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = var.tags
+}
+
+resource "aws_lb_target_group" "prometheus" {
+  name        = "${var.name_prefix}-prometheus-tg"
+  port        = 9090
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
+
+  health_check {
+    path                = "/-/healthy"
     matcher             = "200"
     interval            = 30
     timeout             = 5
@@ -66,25 +85,6 @@ resource "aws_lb_listener" "grafana" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.grafana.arn
   }
-}
-
-resource "aws_lb_target_group" "prometheus" {
-  name        = "${var.name_prefix}-prom-tg"
-  port        = 9090
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "instance"
-
-  health_check {
-    path                = "/-/healthy"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-  }
-
-  tags = var.tags
 }
 
 resource "aws_lb_listener" "prometheus" {

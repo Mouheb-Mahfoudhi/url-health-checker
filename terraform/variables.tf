@@ -78,6 +78,12 @@ variable "image_tag" {
 
 variable "monitoring_instance_type" {
   type        = string
-  description = "EC2 instance type for the Prometheus/YACE/Grafana box"
-  default     = "t3.small"
+  description = "Instance type for the monitoring EC2 instance"
+  default     = "t3.micro"
+}
+
+variable "monitoring_key_name" {
+  type        = string
+  description = "Existing EC2 key pair name for SSH access to the monitoring instance"
+  default     = "monitoring instance"
 }

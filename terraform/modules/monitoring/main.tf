@@ -6,6 +6,7 @@ data "aws_ami" "al2023" {
     name   = "name"
     values = ["al2023-ami-*-x86_64"]
   }
+
   filter {
     name   = "virtualization-type"
     values = ["hvm"]
@@ -29,8 +30,6 @@ resource "aws_iam_role" "monitoring" {
   tags = var.tags
 }
 
-# What YACE needs to discover tagged resources and pull CloudWatch metrics,
-# and what Grafana needs to query CloudWatch Logs directly.
 resource "aws_iam_role_policy" "monitoring_observability" {
   name = "${var.name_prefix}-monitoring-observability"
   role = aws_iam_role.monitoring.id
@@ -56,25 +55,19 @@ resource "aws_iam_role_policy" "monitoring_observability" {
   })
 }
 
-# Lets you reach the box with `aws ssm start-session --target <id>` instead of
-# SSH - no key pair, no inbound port open on the security group at all.
-resource "aws_iam_role_policy_attachment" "monitoring_ssm" {
-  role       = aws_iam_role.monitoring.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
 resource "aws_iam_instance_profile" "monitoring" {
   name = "${var.name_prefix}-monitoring"
   role = aws_iam_role.monitoring.name
 }
 
 resource "aws_instance" "monitoring" {
-  ami                         = data.aws_ami.al2023.id
+  ami                          = data.aws_ami.al2023.id
   instance_type                = var.instance_type
-  subnet_id                    = var.private_subnet_id
+  subnet_id                    = var.public_subnet_id
   vpc_security_group_ids       = [var.monitoring_sg_id]
   iam_instance_profile         = aws_iam_instance_profile.monitoring.name
-  associate_public_ip_address  = false
+  associate_public_ip_address  = true
+  key_name                     = var.key_name
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region          = var.aws_region
@@ -89,12 +82,12 @@ resource "aws_instance" "monitoring" {
 
 resource "aws_lb_target_group_attachment" "grafana" {
   target_group_arn = var.grafana_target_group_arn
-  target_id         = aws_instance.monitoring.id
+  target_id        = aws_instance.monitoring.id
   port              = 3000
 }
 
 resource "aws_lb_target_group_attachment" "prometheus" {
   target_group_arn = var.prometheus_target_group_arn
-  target_id         = aws_instance.monitoring.id
+  target_id        = aws_instance.monitoring.id
   port              = 9090
 }
