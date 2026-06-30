@@ -69,6 +69,12 @@ resource "aws_instance" "monitoring" {
   associate_public_ip_address  = true
   key_name                     = var.key_name
 
+  root_block_device {
+    volume_size           = 20
+    volume_type            = "gp3"
+    delete_on_termination  = true
+  }
+
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
     aws_region          = var.aws_region
     discovery_tag_key   = var.discovery_tag_key
