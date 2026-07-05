@@ -5,6 +5,7 @@ pydantic>=2.5.0
 python-dotenv>=1.2.2
 jinja2>=3.1.6
 starlette>=0.47.2
+python-json-logger>=3.2.1
 
 # Testing dependencies
 pytest>=9.0.3

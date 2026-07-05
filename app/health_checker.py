@@ -1,6 +1,7 @@
 """
 Health checker module for website health monitoring.
 """
+import logging
 import socket
 import ssl
 import time
@@ -9,6 +10,9 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import httpx
+
+
+logger = logging.getLogger(__name__)
 
 
 class HealthCheckError(Exception):
@@ -61,10 +65,15 @@ def check_http_status(url: str, timeout: int = 10) -> int:
             response = client.get(url)
             return response.status_code
     except httpx.TimeoutException:
+        logger.warning("http_check_timeout", extra={"url": url, "timeout": timeout})
         raise HealthCheckError("Request timed out")
     except httpx.HTTPStatusError as e:
         return e.response.status_code
     except Exception as e:
+        logger.error(
+            "http_check_failed",
+            extra={"url": url, "error": str(e), "error_type": e.__class__.__name__},
+        )
         raise HealthCheckError(f"HTTP request failed: {str(e)}")
 
 
@@ -89,6 +98,10 @@ def check_response_time(url: str, timeout: int = 10) -> float:
             end_time = time.time()
             return round((end_time - start_time) * 1000, 2)
     except Exception as e:
+        logger.error(
+            "response_time_check_failed",
+            extra={"url": url, "error": str(e), "error_type": e.__class__.__name__},
+        )
         raise HealthCheckError(f"Response time check failed: {str(e)}")
 
 
@@ -145,6 +158,7 @@ def check_ssl_certificate(url: str) -> Dict[str, Optional[bool | int]]:
         }
 
     except Exception:
+        logger.warning("ssl_check_failed", extra={"url": url})
         # If SSL check fails, certificate is likely invalid
         return {
             'valid': False,

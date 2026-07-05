@@ -1,6 +1,7 @@
 """
 Unit tests for health_checker module.
 """
+import logging
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone, timedelta
@@ -87,13 +88,21 @@ class TestCheckHttpStatus:
         assert result == 404
 
     @patch('app.health_checker.httpx.Client')
-    def test_check_http_status_timeout(self, mock_client):
+    def test_check_http_status_timeout(self, mock_client, caplog):
         """Test HTTP status check with timeout."""
         import httpx
         mock_client.return_value.__enter__.return_value.get.side_effect = httpx.TimeoutException("Timeout")
 
-        with pytest.raises(HealthCheckError, match="timed out"):
-            check_http_status("https://example.com", timeout=1)
+        with caplog.at_level(logging.WARNING, logger="app.health_checker"):
+            with pytest.raises(HealthCheckError, match="timed out"):
+                check_http_status("https://example.com", timeout=1)
+
+        log_record = next(
+            record for record in caplog.records
+            if record.getMessage() == "http_check_timeout"
+        )
+        assert log_record.url == "https://example.com"
+        assert log_record.timeout == 1
 
     @patch('app.health_checker.httpx.Client')
     def test_check_http_status_connection_error(self, mock_client):

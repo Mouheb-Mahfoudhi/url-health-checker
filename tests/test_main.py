@@ -1,6 +1,7 @@
 """
 Unit tests for FastAPI application endpoints.
 """
+import logging
 from unittest.mock import patch
 
 
@@ -36,7 +37,7 @@ class TestHealthCheckEndpoint:
     """Tests for health check endpoint (/health)."""
 
     @patch('app.main.perform_health_check')
-    def test_health_check_success(self, mock_check, client):
+    def test_health_check_success(self, mock_check, client, caplog):
         """Test successful health check."""
         mock_check.return_value = {
             "url": "https://example.com",
@@ -47,13 +48,24 @@ class TestHealthCheckEndpoint:
             "timestamp": "2026-04-29T22:00:00Z"
         }
 
-        response = client.get("/health?url=https://example.com")
+        with caplog.at_level(logging.INFO, logger="app"):
+            response = client.get("/health?url=https://example.com")
 
         assert response.status_code == 200
         data = response.json()
         assert data["status_code"] == 200
         assert data["response_time_ms"] == 150.5
         assert data["ssl_valid"] is True
+
+        log_record = next(
+            record for record in caplog.records
+            if record.getMessage() == "health_check_completed"
+        )
+        assert log_record.url == "https://example.com"
+        assert log_record.status_code == 200
+        assert log_record.response_time_ms == 150.5
+        assert log_record.ssl_valid is True
+        assert log_record.ssl_expires_days == 45
 
     @patch('app.main.perform_health_check')
     def test_health_check_with_404(self, mock_check, client):
@@ -105,16 +117,24 @@ class TestHealthCheckEndpoint:
         assert "Invalid URL format" in data["detail"]
 
     @patch('app.main.perform_health_check')
-    def test_health_check_timeout(self, mock_check, client):
+    def test_health_check_timeout(self, mock_check, client, caplog):
         """Test health check with timeout."""
         from app.health_checker import HealthCheckError
         mock_check.side_effect = HealthCheckError("Request timed out")
 
-        response = client.get("/health?url=https://example.com")
+        with caplog.at_level(logging.WARNING, logger="app"):
+            response = client.get("/health?url=https://example.com")
 
         assert response.status_code == 400
         data = response.json()
         assert "timed out" in data["detail"].lower()
+
+        log_record = next(
+            record for record in caplog.records
+            if record.getMessage() == "health_check_failed"
+        )
+        assert log_record.url == "https://example.com"
+        assert log_record.error == "Request timed out"
 
     @patch('app.main.perform_health_check')
     def test_health_check_unexpected_error(self, mock_check, client):

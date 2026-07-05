@@ -1,15 +1,38 @@
 """
 FastAPI application for website health checking.
 """
+import logging
 import os
+import sys
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from pythonjsonlogger.json import JsonFormatter
 
 from app.health_checker import perform_health_check, HealthCheckError
+
+
+def configure_logging() -> None:
+    """Configure structured JSON logging for application logs."""
+    logger = logging.getLogger("app")
+
+    if logger.handlers:
+        return
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(
+        JsonFormatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    )
+    logger.addHandler(handler)
+    logger.setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+    logger.propagate = False
+
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
 # Initialize FastAPI app
@@ -96,15 +119,34 @@ async def health_check(
         # Perform health check
         result = perform_health_check(url, timeout)
 
+        logger.info(
+            "health_check_completed",
+            extra={
+                "url": result["url"],
+                "status_code": result["status_code"],
+                "response_time_ms": result["response_time_ms"],
+                "ssl_valid": result["ssl_valid"],
+                "ssl_expires_days": result["ssl_expires"],
+            },
+        )
+
         return result
 
     except HealthCheckError as e:
+        logger.warning(
+            "health_check_failed",
+            extra={"url": url, "error": str(e), "error_type": e.__class__.__name__},
+        )
         raise HTTPException(
             status_code=400,
             detail=str(e),
             headers={"X-Error": "Health Check Failed"}
         )
     except Exception as e:
+        logger.exception(
+            "health_check_error",
+            extra={"url": url, "error_type": e.__class__.__name__},
+        )
         raise HTTPException(
             status_code=500,
             detail="Internal server error",
