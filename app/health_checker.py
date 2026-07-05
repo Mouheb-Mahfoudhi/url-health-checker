@@ -61,7 +61,7 @@ def check_http_status(url: str, timeout: int = 10) -> int:
         HealthCheckError: If request fails
     """
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
             response = client.get(url)
             return response.status_code
     except httpx.TimeoutException:
@@ -92,7 +92,7 @@ def check_response_time(url: str, timeout: int = 10) -> float:
         HealthCheckError: If request fails
     """
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
             start_time = time.time()
             client.get(url)
             end_time = time.time()
@@ -133,29 +133,35 @@ def check_ssl_certificate(url: str) -> Dict[str, Optional[bool | int]]:
         hostname = parsed.hostname
         port = parsed.port or 443
 
-        # Create SSL context
-        context = ssl.create_default_context()
-        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        def read_certificate(context: ssl.SSLContext) -> Dict[str, Optional[bool | int]]:
+            with socket.create_connection((hostname, port), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as secure_sock:
+                    cert = secure_sock.getpeercert()
 
-        with socket.create_connection((hostname, port), timeout=10) as sock:
-            with context.wrap_socket(sock, server_hostname=hostname) as secure_sock:
-                cert = secure_sock.getpeercert()
+            expiry_str = cert['notAfter']
+            expiry_date = datetime.strptime(expiry_str, '%b %d %H:%M:%S %Y %Z')
+            expiry_date = expiry_date.replace(tzinfo=timezone.utc)
 
-        # Check if certificate is valid
-        valid = True  # If we got here without exception, cert is valid
+            return {
+                'valid': True,
+                'expires_in_days': (expiry_date - datetime.now(timezone.utc)).days
+            }
 
-        # Calculate days until expiration
-        from datetime import datetime
-        expiry_str = cert['notAfter']
-        expiry_date = datetime.strptime(expiry_str, '%b %d %H:%M:%S %Y %Z')
-        expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+        # First try a verified TLS handshake so we can report a valid certificate.
+        try:
+            context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            return read_certificate(context)
+        except Exception:
+            # Fall back to an unverified handshake so expired/self-signed certs still return data.
+            fallback_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            fallback_context.check_hostname = False
+            fallback_context.verify_mode = ssl.CERT_NONE
+            fallback_context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-        days_until_expiry = (expiry_date - datetime.now(timezone.utc)).days
-
-        return {
-            'valid': valid,
-            'expires_in_days': days_until_expiry
-        }
+            certificate_data = read_certificate(fallback_context)
+            certificate_data['valid'] = False
+            return certificate_data
 
     except Exception:
         logger.warning("ssl_check_failed", extra={"url": url})
