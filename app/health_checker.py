@@ -2,6 +2,7 @@
 Health checker module for website health monitoring.
 """
 import logging
+import http.client
 import socket
 import ssl
 import time
@@ -18,6 +19,41 @@ logger = logging.getLogger(__name__)
 class HealthCheckError(Exception):
     """Custom exception for health check errors."""
     pass
+
+
+def _build_unverified_ssl_context() -> ssl.SSLContext:
+    """Create an SSL context that skips certificate verification for fallback requests."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
+def _fetch_status_code_and_time(url: str, timeout: int) -> tuple[int, float]:
+    """Fetch a URL and return status code plus elapsed time without failing on bad TLS certs."""
+    parsed = urllib.parse.urlparse(url)
+    connection_class = http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+    connection_kwargs = {"timeout": timeout}
+
+    if parsed.scheme == "https":
+        connection_kwargs["context"] = _build_unverified_ssl_context()
+
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    connection = connection_class(parsed.hostname, parsed.port or (443 if parsed.scheme == "https" else 80), **connection_kwargs)
+    start_time = time.time()
+
+    try:
+        connection.request("GET", path, headers={"User-Agent": "url-health-checker/1.0"})
+        response = connection.getresponse()
+        response.read()
+        elapsed_ms = round((time.time() - start_time) * 1000, 2)
+        return response.status, elapsed_ms
+    finally:
+        connection.close()
 
 
 def validate_url(url: str) -> str:
@@ -61,12 +97,32 @@ def check_http_status(url: str, timeout: int = 10) -> int:
         HealthCheckError: If request fails
     """
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
             response = client.get(url)
             return response.status_code
     except httpx.TimeoutException:
         logger.warning("http_check_timeout", extra={"url": url, "timeout": timeout})
         raise HealthCheckError("Request timed out")
+    except httpx.HTTPError as e:
+        if urllib.parse.urlparse(url).scheme == "https":
+            try:
+                status_code, _ = _fetch_status_code_and_time(url, timeout)
+                return status_code
+            except Exception as fallback_error:
+                logger.error(
+                    "http_check_failed",
+                    extra={
+                        "url": url,
+                        "error": str(fallback_error),
+                        "error_type": fallback_error.__class__.__name__,
+                    },
+                )
+                raise HealthCheckError(f"HTTP request failed: {str(e)}")
+        logger.error(
+            "http_check_failed",
+            extra={"url": url, "error": str(e), "error_type": e.__class__.__name__},
+        )
+        raise HealthCheckError(f"HTTP request failed: {str(e)}")
     except httpx.HTTPStatusError as e:
         return e.response.status_code
     except Exception as e:
@@ -92,11 +148,31 @@ def check_response_time(url: str, timeout: int = 10) -> float:
         HealthCheckError: If request fails
     """
     try:
-        with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
+        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
             start_time = time.time()
             client.get(url)
             end_time = time.time()
             return round((end_time - start_time) * 1000, 2)
+    except httpx.HTTPError as e:
+        if urllib.parse.urlparse(url).scheme == "https":
+            try:
+                _, elapsed_ms = _fetch_status_code_and_time(url, timeout)
+                return elapsed_ms
+            except Exception as fallback_error:
+                logger.error(
+                    "response_time_check_failed",
+                    extra={
+                        "url": url,
+                        "error": str(fallback_error),
+                        "error_type": fallback_error.__class__.__name__,
+                    },
+                )
+                raise HealthCheckError(f"Response time check failed: {str(e)}")
+        logger.error(
+            "response_time_check_failed",
+            extra={"url": url, "error": str(e), "error_type": e.__class__.__name__},
+        )
+        raise HealthCheckError(f"Response time check failed: {str(e)}")
     except Exception as e:
         logger.error(
             "response_time_check_failed",
