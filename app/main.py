@@ -116,19 +116,13 @@ async def health_check(
         # Get timeout from environment variable or use default
         timeout = int(os.getenv('HEALTH_CHECK_TIMEOUT', '10'))
 
+        logger.info(
+            "health_check_received",
+            extra={"url": url, "timeout": timeout},
+        )
+
         # Perform health check
         result = perform_health_check(url, timeout)
-
-        logger.info(
-            "health_check_completed",
-            extra={
-                "url": result["url"],
-                "status_code": result["status_code"],
-                "response_time_ms": result["response_time_ms"],
-                "ssl_valid": result["ssl_valid"],
-                "ssl_expires_days": result["ssl_expires"],
-            },
-        )
 
         return result
 

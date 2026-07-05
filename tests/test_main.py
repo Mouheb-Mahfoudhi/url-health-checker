@@ -59,13 +59,10 @@ class TestHealthCheckEndpoint:
 
         log_record = next(
             record for record in caplog.records
-            if record.getMessage() == "health_check_completed"
+            if record.getMessage() == "health_check_received"
         )
         assert log_record.url == "https://example.com"
-        assert log_record.status_code == 200
-        assert log_record.response_time_ms == 150.5
-        assert log_record.ssl_valid is True
-        assert log_record.ssl_expires_days == 45
+        assert log_record.timeout == 10
 
     @patch('app.main.perform_health_check')
     def test_health_check_with_404(self, mock_check, client):
@@ -122,7 +119,7 @@ class TestHealthCheckEndpoint:
         from app.health_checker import HealthCheckError
         mock_check.side_effect = HealthCheckError("Request timed out")
 
-        with caplog.at_level(logging.WARNING, logger="app"):
+        with caplog.at_level(logging.INFO, logger="app"):
             response = client.get("/health?url=https://example.com")
 
         assert response.status_code == 400
@@ -135,6 +132,12 @@ class TestHealthCheckEndpoint:
         )
         assert log_record.url == "https://example.com"
         assert log_record.error == "Request timed out"
+
+        request_record = next(
+            record for record in caplog.records
+            if record.getMessage() == "health_check_received"
+        )
+        assert request_record.url == "https://example.com"
 
     @patch('app.main.perform_health_check')
     def test_health_check_unexpected_error(self, mock_check, client):
