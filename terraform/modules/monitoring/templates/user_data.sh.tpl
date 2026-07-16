@@ -113,7 +113,7 @@ cat > docker-compose.yml <<'COMPOSE'
 version: "3.8"
 services:
   yace:
-    image: prometheuscommunity/yet-another-cloudwatch-exporter:v0.61.0
+    image: prometheuscommunity/yet-another-cloudwatch-exporter:v0.64.0
     container_name: yace
     command: ["--config.file=/config/yace-config.yml"]
     volumes:
