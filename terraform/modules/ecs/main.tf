@@ -118,7 +118,7 @@ resource "aws_ecs_task_definition" "app" {
           Host                    = var.monitoring_private_ip
           Port                    = "12201"
           Mode                    = "udp"
-          gelf_short_message_key  = "short_message"
+          gelf_short_message_key  = "message"
         }
       }
       dependsOn = [
