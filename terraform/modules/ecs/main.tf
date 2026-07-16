@@ -112,11 +112,35 @@ resource "aws_ecs_task_definition" "app" {
         }
       ]
       logConfiguration = {
+        logDriver = "awsfirelens"
+        options = {
+          Name                    = "gelf"
+          Host                    = var.monitoring_private_ip
+          Port                    = "12201"
+          Mode                    = "udp"
+          gelf_short_message_key  = "short_message"
+        }
+      }
+      dependsOn = [
+        {
+          containerName = "log_router"
+          condition     = "START"
+        }
+      ]
+    },
+    {
+      name      = "log_router"
+      image     = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+      essential = true
+      firelensConfiguration = {
+        type = "fluentbit"
+      }
+      logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = data.aws_region.current.region
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-stream-prefix" = "firelens"
         }
       }
     }
