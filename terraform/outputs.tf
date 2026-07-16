@@ -38,7 +38,7 @@ output "monitoring_public_ip" {
 }
 
 output "monitoring_private_ip" {
-  description = "Private IP of the monitoring instance, used by ECS tasks for GELF log shipping"
-  value       = aws_instance.monitoring.private_ip
+  description = "Monitoring instance private IP"
+  value       = module.monitoring.monitoring_private_ip
 }
 
