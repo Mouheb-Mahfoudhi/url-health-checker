@@ -39,6 +39,9 @@ jobs:
 
       - name: Terraform apply (infra)
         working-directory: ${{ env.TF_DIR }}
+        env:
+          TF_VAR_graylog_root_password_sha2: ${{ secrets.GRAYLOG_ROOT_PASSWORD_SHA2 }}
+          TF_VAR_graylog_password_secret: ${{ secrets.GRAYLOG_PASSWORD_SECRET }}
         run: |
           terraform apply -auto-approve \
             -target=module.network \

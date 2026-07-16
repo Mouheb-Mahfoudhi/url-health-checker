@@ -28,7 +28,17 @@ output "prometheus_url" {
   value       = "http://${module.alb.alb_dns_name}:9090"
 }
 
+output "graylog_url" {
+  value = "http://${module.alb.alb_dns_name}:9000"
+}
+
 output "monitoring_public_ip" {
   description = "Monitoring instance public IP (for SSH)"
   value       = module.monitoring.public_ip
 }
+
+output "monitoring_private_ip" {
+  description = "Private IP of the monitoring instance, used by ECS tasks for GELF log shipping"
+  value       = aws_instance.monitoring.private_ip
+}
+

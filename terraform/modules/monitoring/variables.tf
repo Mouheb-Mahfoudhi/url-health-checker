@@ -52,3 +52,25 @@ variable "prometheus_target_group_arn" {
   type        = string
   description = "ALB target group ARN for Prometheus"
 }
+
+variable "alb_dns_name" {
+  type        = string
+  description = "ALB DNS name, used for Graylog's external URI"
+}
+
+variable "graylog_target_group_arn" {
+  type        = string
+  description = "ALB target group ARN for Graylog web UI"
+}
+
+variable "graylog_root_password_sha2" {
+  type        = string
+  description = "SHA256 hash of the Graylog admin password"
+  sensitive   = true
+}
+
+variable "graylog_password_secret" {
+  type        = string
+  description = "Graylog password secret (random string, min 16 chars)"
+  sensitive   = true
+}

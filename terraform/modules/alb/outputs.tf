@@ -27,3 +27,7 @@ output "prometheus_target_group_arn" {
   description = "Prometheus target group ARN"
   value       = aws_lb_target_group.prometheus.arn
 }
+
+output "graylog_target_group_arn" {
+  value = aws_lb_target_group.graylog.arn
+}

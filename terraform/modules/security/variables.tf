@@ -17,3 +17,8 @@ variable "container_port" {
   type        = number
   description = "Container port"
 }
+
+variable "vpc_cidr" {
+  type        = string
+  description = "VPC CIDR block, for allowing GELF UDP from ECS tasks"
+}

@@ -27,6 +27,14 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Graylog HTTP from internet"
+    from_port   = 9000
+    to_port     = 9000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     description = "Allow all outbound"
     from_port   = 0
@@ -75,6 +83,22 @@ resource "aws_security_group" "monitoring" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description     = "Graylog from ALB"
+    from_port       = 9000
+    to_port         = 9000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  ingress {
+    description = "GELF UDP from ECS tasks"
+    from_port   = 12201
+    to_port     = 12201
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   tags = merge(var.tags, {

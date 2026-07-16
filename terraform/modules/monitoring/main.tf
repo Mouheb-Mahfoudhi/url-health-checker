@@ -76,9 +76,12 @@ resource "aws_instance" "monitoring" {
   }
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region          = var.aws_region
-    discovery_tag_key   = var.discovery_tag_key
-    discovery_tag_value = var.discovery_tag_value
+    aws_region                 = var.aws_region
+    discovery_tag_key          = var.discovery_tag_key
+    discovery_tag_value        = var.discovery_tag_value
+    alb_dns_name               = var.alb_dns_name
+    graylog_root_password_sha2 = var.graylog_root_password_sha2
+    graylog_password_secret    = var.graylog_password_secret
   })
 
   tags = merge(var.tags, {
@@ -96,4 +99,10 @@ resource "aws_lb_target_group_attachment" "prometheus" {
   target_group_arn = var.prometheus_target_group_arn
   target_id        = aws_instance.monitoring.id
   port              = 9090
+}
+
+resource "aws_lb_target_group_attachment" "graylog" {
+  target_group_arn = var.graylog_target_group_arn
+  target_id         = aws_instance.monitoring.id
+  port              = 9000
 }

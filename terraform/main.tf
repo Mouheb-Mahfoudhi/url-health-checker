@@ -43,6 +43,7 @@ module "security" {
   tags           = local.tags
   vpc_id         = module.network.vpc_id
   container_port = var.container_port
+  vpc_cidr = var.vpc_cidr
 }
 
 module "ecr" {
@@ -77,6 +78,7 @@ module "ecs" {
   target_group_arn    = module.alb.target_group_arn
   ecr_repository_url  = module.ecr.repository_url
   ecr_repository_arn  = module.ecr.repository_arn
+  monitoring_private_ip = module.monitoring.monitoring_private_ip
 }
 
 module "monitoring" {
@@ -92,4 +94,8 @@ module "monitoring" {
   discovery_tag_value          = var.project_name
   grafana_target_group_arn     = module.alb.grafana_target_group_arn
   prometheus_target_group_arn  = module.alb.prometheus_target_group_arn
+  alb_dns_name                = module.alb.alb_dns_name
+  graylog_target_group_arn    = module.alb.graylog_target_group_arn
+  graylog_root_password_sha2  = var.graylog_root_password_sha2
+  graylog_password_secret     = var.graylog_password_secret
 }

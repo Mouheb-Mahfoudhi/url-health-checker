@@ -67,3 +67,8 @@ variable "ecr_repository_arn" {
   type        = string
   description = "ECR repository ARN"
 }
+
+variable "monitoring_private_ip" {
+  type        = string
+  description = "Private IP of the monitoring EC2 instance, for GELF log shipping"
+}

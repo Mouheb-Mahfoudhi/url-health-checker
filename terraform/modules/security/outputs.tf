@@ -12,3 +12,8 @@ output "monitoring_sg_id" {
   description = "Monitoring security group ID"
   value       = aws_security_group.monitoring.id
 }
+
+output "monitoring_sg_id" {
+  # only add if this doesn't already exist from your original setup
+  value = aws_security_group.monitoring.id
+}

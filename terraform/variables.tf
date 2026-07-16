@@ -79,11 +79,23 @@ variable "image_tag" {
 variable "monitoring_instance_type" {
   type        = string
   description = "Instance type for the monitoring EC2 instance"
-  default     = "t3.micro"
+  default     = "m7i-flex.large"
 }
 
 variable "monitoring_key_name" {
   type        = string
   description = "Existing EC2 key pair name for SSH access to the monitoring instance"
   default     = "monitoring instance"
+}
+
+variable "graylog_root_password_sha2" {
+  type        = string
+  description = "SHA256 hash of Graylog admin password - generate with: echo -n 'yourpassword' | sha256sum"
+  sensitive   = true
+}
+
+variable "graylog_password_secret" {
+  type        = string
+  description = "Graylog password secret - generate with: openssl rand -hex 48"
+  sensitive   = true
 }
