@@ -124,6 +124,12 @@ async def health_check(
         # Perform health check
         result = perform_health_check(url, timeout)
 
+        ssl_status = (
+            "valid" if result["ssl_valid"] is True
+            else "invalid" if result["ssl_valid"] is False
+            else "http"
+        )
+
         logger.info(
             "health_check_completed",
             extra={
@@ -132,6 +138,7 @@ async def health_check(
                 "response_time_ms": result["response_time_ms"],
                 "ssl_valid": result["ssl_valid"],
                 "ssl_expires_days": result["ssl_expires"],
+                "ssl_status": ssl_status,
             },
         )
 
