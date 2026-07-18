@@ -179,6 +179,15 @@ services:
       - GRAYLOG_HTTP_EXTERNAL_URI=http://${alb_dns_name}:9000/
       - GRAYLOG_ELASTICSEARCH_HOSTS=http://opensearch:9200
       - GRAYLOG_MONGODB_URI=mongodb://mongodb:27017/graylog
+      - GRAYLOG_TRANSPORT_EMAIL_ENABLED=true
+      - GRAYLOG_TRANSPORT_EMAIL_HOSTNAME=smtp.gmail.com
+      - GRAYLOG_TRANSPORT_EMAIL_PORT=587
+      - GRAYLOG_TRANSPORT_EMAIL_USE_AUTH=true
+      - GRAYLOG_TRANSPORT_EMAIL_AUTH_USERNAME=${graylog_smtp_username}
+      - GRAYLOG_TRANSPORT_EMAIL_AUTH_PASSWORD=${graylog_smtp_password}
+      - GRAYLOG_TRANSPORT_EMAIL_USE_TLS=true
+      - GRAYLOG_TRANSPORT_EMAIL_USE_SSL=false
+      - GRAYLOG_TRANSPORT_EMAIL_FROM_EMAIL=${graylog_smtp_username}
     ports:
       - "9000:9000"
       - "12201:12201/udp"

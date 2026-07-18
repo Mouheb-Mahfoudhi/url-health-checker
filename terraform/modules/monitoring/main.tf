@@ -76,12 +76,14 @@ resource "aws_instance" "monitoring" {
   }
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region                 = var.aws_region
-    discovery_tag_key          = var.discovery_tag_key
-    discovery_tag_value        = var.discovery_tag_value
-    alb_dns_name               = var.alb_dns_name
-    graylog_root_password_sha2 = var.graylog_root_password_sha2
-    graylog_password_secret    = var.graylog_password_secret
+    aws_region                  = var.aws_region
+    discovery_tag_key           = var.discovery_tag_key
+    discovery_tag_value         = var.discovery_tag_value
+    alb_dns_name                = var.alb_dns_name
+    graylog_root_password_sha2  = var.graylog_root_password_sha2
+    graylog_password_secret     = var.graylog_password_secret
+    graylog_smtp_username       = var.graylog_smtp_username
+    graylog_smtp_password       = var.graylog_smtp_password
   })
 
   tags = merge(var.tags, {

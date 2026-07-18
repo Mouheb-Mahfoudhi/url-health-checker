@@ -58,6 +58,8 @@ jobs:
         env:
           TF_VAR_graylog_root_password_sha2: ${{ secrets.GRAYLOG_ROOT_PASSWORD_SHA2 }}
           TF_VAR_graylog_password_secret: ${{ secrets.GRAYLOG_PASSWORD_SECRET }}
+          TF_VAR_graylog_smtp_username: ${{ secrets.GRAYLOG_SMTP_USERNAME }}
+          TF_VAR_graylog_smtp_password: ${{ secrets.GRAYLOG_SMTP_PASSWORD }}
         run: |
           terraform apply -auto-approve \
             -var="image_tag=${IMAGE_TAG}" \

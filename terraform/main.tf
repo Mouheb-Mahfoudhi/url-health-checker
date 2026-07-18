@@ -94,8 +94,10 @@ module "monitoring" {
   discovery_tag_value          = var.project_name
   grafana_target_group_arn     = module.alb.grafana_target_group_arn
   prometheus_target_group_arn  = module.alb.prometheus_target_group_arn
-  alb_dns_name                = module.alb.alb_dns_name
-  graylog_target_group_arn    = module.alb.graylog_target_group_arn
-  graylog_root_password_sha2  = var.graylog_root_password_sha2
-  graylog_password_secret     = var.graylog_password_secret
+  alb_dns_name                 = module.alb.alb_dns_name
+  graylog_target_group_arn     = module.alb.graylog_target_group_arn
+  graylog_root_password_sha2   = var.graylog_root_password_sha2
+  graylog_password_secret      = var.graylog_password_secret
+  graylog_smtp_username        = var.graylog_smtp_username
+  graylog_smtp_password        = var.graylog_smtp_password
 }

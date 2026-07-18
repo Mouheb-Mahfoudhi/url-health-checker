@@ -74,3 +74,13 @@ variable "graylog_password_secret" {
   description = "Graylog password secret (random string, min 16 chars)"
   sensitive   = true
 }
+
+variable "graylog_smtp_username" {
+  type      = string
+  sensitive = true
+}
+
+variable "graylog_smtp_password" {
+  type      = string
+  sensitive = true
+}
